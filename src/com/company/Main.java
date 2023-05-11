@@ -176,6 +176,12 @@ public class Main {
                     continue mainLoop;
                 }//if there is an amount that is not a number, catch the error during conversion
 
+                if (amount <= 0) {
+                    System.out.println("\nGirdiğiniz miktarlar pozitif olmalı. Lütfen doğru türde giriş yapın. Eğer sıfır yazacaksanız o materyale giriş yapmayın.\n");
+                    Thread.sleep(1500);
+                    continue mainLoop;
+                }
+
                 if (mat.materialAmountType == AmountType.pieces && amount%1!=0) {
                     System.out.println("\nTaneyle ölçülen bir materyale ondalık giriş yaptınız. Lütfen malzeme kodu ve miktarlarının eşleşmesine dikkat edin.\n");
                     Thread.sleep(1500);
