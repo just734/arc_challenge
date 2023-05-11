@@ -73,7 +73,6 @@ class MatToRemove {
     BigDecimal removedWeight;
     BigDecimal amountToUse;
     BigDecimal removedAmount;
-    BigDecimal materialWeight;
 
     public MatToRemove(String matCode, String name, AmountType amountType, BigDecimal weight, BigDecimal weightToRemove, BigDecimal amount, BigDecimal amountToRemove){
         materialCode = matCode;
@@ -116,7 +115,7 @@ public class Main {
                 new Material("6.'18'", "18 AWG Wire", AmountType.metres, 0.35, 0.75),
         }; //create an array with all mats in it
 
-        Map<String, Material> MaterialCatalog = new HashMap<String, Material>(); //create a map that will allow us to get materials according to their code
+        Map<String, Material> MaterialCatalog = new HashMap<>(); //create a map that will allow us to get materials according to their code
 
         for (Material i : materials) {
             MaterialCatalog.put(i.materialCode, i);
@@ -151,7 +150,7 @@ public class Main {
             if (matSelections.length != matAmounts.length) {
                 System.out.println("\nFarklı sayıda giriş yaptınız. Lütfen malzeme kodu ve miktarlarının eşleşmesine dikkat edin.\n");
                 Thread.sleep(1500);
-                continue mainLoop;
+                continue ;
             }//check if the number of inputs match for the selections and the amount of materials
 
             UsedMaterial[] selectedMaterials = new UsedMaterial[matSelections.length];
@@ -244,7 +243,7 @@ public class Main {
                     if (i.materialAmountType==AmountType.pieces){
                             while (remainingWeight.compareTo(BigDecimal.valueOf(weightLimit)) == 1) {
                                 remainingAmount=remainingAmount.subtract(BigDecimal.valueOf(1));
-                                removedAmount=removedAmount.add(BigDecimal.valueOf(1));;
+                                removedAmount=removedAmount.add(BigDecimal.valueOf(1));
                                 remainingWeight = remainingWeight.subtract(weightPerPiece);
                                 removedWeight= removedWeight.add(weightPerPiece);
                             }
