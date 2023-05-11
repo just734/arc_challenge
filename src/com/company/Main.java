@@ -1,6 +1,7 @@
 package com.company;
 
 import java.util.*;
+import java.math.BigDecimal; //we are importing big decimal so that our decimal calculations don't mess up when working with small numbers to calculate item removals
 
 //the types of units for the mats
 enum AmountType {
@@ -34,14 +35,16 @@ class UsedMaterial{
     Double totalWeight;
     Double totalPrice;
     Double usedAmount;
+    Double materialWeight;
 
-    public UsedMaterial(String matCode, String name, AmountType amountType, Double weight, Double price, Double amount){
+    public UsedMaterial(String matCode, String name, AmountType amountType, Double weight, Double price, Double amount, Double weightPer){
         materialCode = matCode;
         materialName = name;
         materialAmountType = amountType;
         totalWeight = weight;
         totalPrice = price;
         usedAmount = amount;
+        materialWeight = weightPer;
     }
 }
 
@@ -57,6 +60,37 @@ class WeightComparator implements Comparator<UsedMaterial> {
     @Override
     public int compare(UsedMaterial a, UsedMaterial b) {
         return a.totalWeight.compareTo(b.totalWeight);
+    }
+}
+
+//creating a new class for the objects that will represent our removed materials, this is so that we don't have calculate again after finding the mods efficient material
+//we use big decimal so that we will be able to calculate accurately
+class MatToRemove {
+    String materialCode;
+    String materialName;
+    AmountType materialAmountType;
+    BigDecimal reachedWeight;
+    BigDecimal removedWeight;
+    BigDecimal amountToUse;
+    BigDecimal removedAmount;
+    BigDecimal materialWeight;
+
+    public MatToRemove(String matCode, String name, AmountType amountType, BigDecimal weight, BigDecimal weightToRemove, BigDecimal amount, BigDecimal amountToRemove){
+        materialCode = matCode;
+        materialName = name;
+        materialAmountType = amountType;
+        reachedWeight = weight;
+        removedWeight = weightToRemove;
+        amountToUse = amount;
+        removedAmount = amountToRemove;
+    }
+}
+
+//this is so that we can sort the array of removal options later on
+class RemovalComparator implements Comparator<MatToRemove> {
+    @Override
+    public int compare(MatToRemove a, MatToRemove b) {
+        return a.reachedWeight.compareTo(b.reachedWeight);
     }
 }
 
@@ -95,7 +129,7 @@ public class Main {
         //variables
         boolean cont = true;
 
-        //main code
+        //the loop for the dialogue in the terminal, the logic will go here
         mainLoop:
         while (cont) {
             //print the list of materials
@@ -148,7 +182,7 @@ public class Main {
                     continue mainLoop;
                 }//if a decimal was entered as amount for a material that is measured in pieces
 
-                selectedMaterials[i] = new UsedMaterial(mat.materialCode, mat.materialName, mat.materialAmountType, mat.materialWeight*amount, mat.materialPrice*amount, amount); //add the selected material as an object to the array
+                selectedMaterials[i] = new UsedMaterial(mat.materialCode, mat.materialName, mat.materialAmountType, mat.materialWeight*amount, mat.materialPrice*amount, amount, mat.materialWeight); //add the selected material as an object to the array
             }//loop through all selected materials
 
             //sort the arrays to print them
@@ -189,10 +223,75 @@ public class Main {
 
             //this part is for finding out the material to remove, will be done later
             if (totalWeight > weightLimit) {
+                //create a list for all possible solo materials you can erase to get down from the limit without running out
+                MatToRemove[] itemsToRemove = new MatToRemove[sortedByPrice.length];
+                //loop through all selected materials
+                for (int x = 0; x<sortedByPrice.length; x++) {
+                    //create corresponding values for the variables of the object we will use for the material to remove
+                    UsedMaterial i = sortedByPrice[x];
+                    BigDecimal remainingWeight = BigDecimal.valueOf(totalWeight);
+                    BigDecimal remainingAmount = BigDecimal.valueOf(i.usedAmount);
+                    BigDecimal weightPerPiece = BigDecimal.valueOf(i.materialWeight);
+                    BigDecimal removedWeight = BigDecimal.valueOf(0.0);
+                    BigDecimal removedAmount = BigDecimal.valueOf(0.0);
+                    //if it's a piece, we can just go down one by one until we get down from the limit
+                    if (i.materialAmountType==AmountType.pieces){
+                            while (remainingWeight.compareTo(BigDecimal.valueOf(weightLimit)) == 1) {
+                                remainingAmount=remainingAmount.subtract(BigDecimal.valueOf(1));
+                                removedAmount=removedAmount.add(BigDecimal.valueOf(1));;
+                                remainingWeight = remainingWeight.subtract(weightPerPiece);
+                                removedWeight= removedWeight.add(weightPerPiece);
+                            }
+                    }
+                    //if not, we will use a hundredth of it since realistically you won't be using/purchasing material my millimeters or square-millimeters
+                    else {
+                        while (remainingWeight.compareTo(BigDecimal.valueOf(weightLimit)) == 1) {
+                            remainingAmount = remainingAmount.subtract(BigDecimal.valueOf(0.01));
+                            removedAmount = removedAmount.add(BigDecimal.valueOf(0.01));
+                            remainingWeight = remainingWeight.subtract(weightPerPiece.multiply(BigDecimal.valueOf(0.01)));
+                            removedWeight = removedWeight.add(weightPerPiece.multiply(BigDecimal.valueOf(0.01)));
+                        }
+                    }
+                    //if it didn't run out before getting down to the limit, add it to the list
+                    if (remainingWeight.compareTo(BigDecimal.valueOf(0))>-1) {
+                        itemsToRemove[x] = new MatToRemove(i.materialCode, i.materialName, i.materialAmountType, remainingWeight, removedWeight, remainingAmount, removedAmount);
+                    }
+                }
+                //sort the list with the comparator we created so that it is ordered in ascending order of possible weights
+                Arrays.sort(itemsToRemove, new RemovalComparator());
+                //get the last, therefore biggest element of the array. this will be our closest result to the limit
+                MatToRemove itemToRemove = itemsToRemove[itemsToRemove.length-1];
 
+                //print out the result
+                System.out.println("\nMateryal çıkarma önerisi:");
+                System.out.println(itemToRemove.materialCode+" kodlu, " + itemToRemove.materialName +" adlı materyalden "+ itemToRemove.removedAmount + " birim çıkararak " + itemToRemove.reachedWeight + "kg ağırlığına ulaşabilirsiniz. Bu ağırlık limitini geçmeden kalabileceğiniz en yüksek ağırlıkdır. Buna ulaşmak için "+itemToRemove.removedWeight+"kg materyal çıkarılmıştır. "+itemToRemove.amountToUse+" birim materyal hala kullanımda.");
             }
 
-            cont = false;
+            //ask the user if they want to use the program from the start again
+            System.out.println("\nProgramı tekrar kullanmak ister misiniz? (Y/N)");
+            String constStr = scanner.nextLine();
+
+            if (constStr.equals("y") || constStr.equals("Y")) {
+                System.out.println("Tekrar başlatılıyor.");
+                Thread.sleep(500);
+                try //clear screen if they want to restart
+                {
+                    final String os = System.getProperty("os.name");
+                    if (os.contains("Windows"))
+                    {
+                        Runtime.getRuntime().exec("cls");
+                    }
+                }
+                catch (final Exception e)
+                {
+                    e.printStackTrace();
+                }
+            } else if (constStr.equals("n") || constStr.equals("N")) {
+                cont = false;
+            } else {
+                System.out.println("Geçersiz giriş yaptınız. Çıkmak istediğiniz varsayıldı.");
+                cont = false;
+            }
         }
     }
 }
